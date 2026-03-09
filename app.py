@@ -1,28 +1,27 @@
+```python
 import streamlit as st
 import pandas as pd
 import folium
 import random
-from datetime import timedelta
+import requests
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from streamlit_folium import st_folium
 from streamlit_autorefresh import st_autorefresh
 
-st_autorefresh(interval=30000, key="refresh")
-
-# layout mais largo
+# -----------------------------
+# configuração da página
+# -----------------------------
 st.set_page_config(layout="wide")
 
-# título mais compacto
+# auto refresh a cada 30s
+st_autorefresh(interval=30000, key="refresh")
+
 st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
 
 # -----------------------------
 # função para carregar dados
 # -----------------------------
-import requests
-import pandas as pd
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-import streamlit as st
-
 @st.cache_data(ttl=30)
 def carregar_dados():
 
@@ -56,34 +55,64 @@ def carregar_dados():
 
     return df
 
-df = carregar_dados()
+
 # -----------------------------
-# formulário de consulta
+# loader suave
+# -----------------------------
+with st.spinner("Atualizando posições dos ônibus..."):
+    df = carregar_dados()
+
+if df.empty:
+    st.warning("Não foi possível carregar dados da API.")
+    st.stop()
+
+
+# -----------------------------
+# guardar linha pesquisada
+# -----------------------------
+if "linha" not in st.session_state:
+    st.session_state.linha = ""
+
+
+# -----------------------------
+# formulário
 # -----------------------------
 with st.form("consulta"):
-    col1, col2 = st.columns([5,1])
+
+    col1, col2 = st.columns([5, 1])
 
     with col1:
-        linha = st.text_input("Digite a linha de ônibus")
+        linha_input = st.text_input(
+            "Digite a linha de ônibus",
+            value=st.session_state.linha
+        )
 
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button("Buscar")
 
-# -----------------------------
-# consulta e exibição
-# -----------------------------
-if submit and linha:
+if submit:
+    st.session_state.linha = linha_input
 
-    # filtra últimos 5 minutos
+linha = st.session_state.linha
+
+
+# -----------------------------
+# consulta
+# -----------------------------
+if linha:
+
     tempo_max = df["datahora"].max()
     limite = tempo_max - timedelta(minutes=5)
+
     df_5min = df[df["datahora"] >= limite]
     df_linha = df_5min[df_5min["linha"].astype(str) == linha]
 
     if len(df_linha) == 0:
         st.warning("Nenhum ônibus encontrado nos últimos 5 minutos")
+
     else:
+
         # -----------------------------
         # KPIs
         # -----------------------------
@@ -92,6 +121,7 @@ if submit and linha:
         hora_final = df_linha["datahora"].max()
 
         k1, k2, k3 = st.columns(3)
+
         k1.metric("🚌 Ônibus ativos", qtd_onibus)
         k2.metric("⏱️ Hora inicial", hora_inicio.strftime("%H:%M:%S"))
         k3.metric("⏱️ Hora final", hora_final.strftime("%H:%M:%S"))
@@ -101,23 +131,41 @@ if submit and linha:
         # -----------------------------
         # mapa
         # -----------------------------
-        centro = [df_linha["latitude"].mean(), df_linha["longitude"].mean()]
+        centro = [
+            df_linha["latitude"].mean(),
+            df_linha["longitude"].mean()
+        ]
+
         mapa = folium.Map(location=centro, zoom_start=12)
 
         onibus_ids = df_linha["ordem"].unique()
+
         random.seed(42)
-        cores = {bus: "#{:06x}".format(random.randint(0, 0xFFFFFF)) for bus in onibus_ids}
+        cores = {
+            bus: "#{:06x}".format(random.randint(0, 0xFFFFFF))
+            for bus in onibus_ids
+        }
 
         for bus in onibus_ids:
+
             dados_bus = df_linha[df_linha["ordem"] == bus].sort_values("datahora")
-            pontos = list(zip(dados_bus["latitude"], dados_bus["longitude"]))
 
-            # desenha rota
+            pontos = list(
+                zip(dados_bus["latitude"], dados_bus["longitude"])
+            )
+
+            # desenhar rota
             if len(pontos) > 1:
-                folium.PolyLine(pontos, color=cores[bus], weight=4, tooltip=f"Ônibus {bus}").add_to(mapa)
+                folium.PolyLine(
+                    pontos,
+                    color=cores[bus],
+                    weight=4,
+                    tooltip=f"Ônibus {bus}"
+                ).add_to(mapa)
 
-            # marcador do último ponto
+            # último ponto
             ultimo = dados_bus.iloc[-1]
+
             folium.CircleMarker(
                 location=[ultimo["latitude"], ultimo["longitude"]],
                 radius=6,
@@ -126,7 +174,6 @@ if submit and linha:
                 popup=f"Linha {linha} | Ônibus {bus}"
             ).add_to(mapa)
 
-        # exibe mapa
         st_folium(
             mapa,
             width=None,
@@ -134,3 +181,4 @@ if submit and linha:
             returned_objects=[],
             key="mapa_onibus"
         )
+```
