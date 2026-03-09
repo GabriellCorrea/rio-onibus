@@ -26,13 +26,13 @@ df = carregar_dados()
 # formulário de consulta
 # -----------------------------
 with st.form("consulta"):
-    col1, col2, col3 = st.columns([3, 1, 1])  # col3 é só para espaçamento final
+    col1, col2, col3 = st.columns([4,1,1])
 
     with col1:
         linha = st.text_input("Digite a linha de ônibus")
 
     with col2:
-        # o botão fica "um pouco acima" naturalmente porque a coluna é menor que o input
+        st.write("")  # empurra o botão para baixo
         submit = st.form_submit_button("Buscar")
 
 # -----------------------------
