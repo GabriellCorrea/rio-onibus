@@ -21,7 +21,7 @@ st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
 # -----------------------------
 # função para carregar dados
 # -----------------------------
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=30, show_spinner=False)
 def carregar_dados():
 
     data_final = datetime.now(ZoneInfo("America/Sao_Paulo"))
