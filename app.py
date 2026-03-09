@@ -19,16 +19,6 @@ st_autorefresh(interval=30000, key="refresh")
 st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
 
 # -----------------------------
-# estado do mapa
-# -----------------------------
-if "map_center" not in st.session_state:
-    st.session_state.map_center = [-22.90, -43.20]
-
-if "map_zoom" not in st.session_state:
-    st.session_state.map_zoom = 12
-
-
-# -----------------------------
 # função para carregar dados
 # -----------------------------
 @st.cache_data(ttl=30, show_spinner=False)
@@ -136,12 +126,14 @@ if linha:
         st.divider()
 
         # -----------------------------
-        # mapa
+        # centro do mapa
         # -----------------------------
-        mapa = folium.Map(
-            location=st.session_state.map_center,
-            zoom_start=st.session_state.map_zoom
-        )
+        centro = [
+            df_linha["latitude"].mean(),
+            df_linha["longitude"].mean()
+        ]
+
+        mapa = folium.Map(location=centro, zoom_start=12)
 
         onibus_ids = df_linha["ordem"].unique()
 
@@ -175,23 +167,9 @@ if linha:
                 popup=f"Linha {linha} | Ônibus {bus}"
             ).add_to(mapa)
 
-        map_data = st_folium(
+        st_folium(
             mapa,
             width=None,
             height=650,
             key="mapa_onibus"
         )
-
-        # -----------------------------
-        # salvar estado do mapa
-        # -----------------------------
-        if map_data:
-
-            if map_data.get("center"):
-                st.session_state.map_center = [
-                    map_data["center"]["lat"],
-                    map_data["center"]["lng"]
-                ]
-
-            if map_data.get("zoom"):
-                st.session_state.map_zoom = map_data["zoom"]
