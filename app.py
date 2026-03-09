@@ -32,7 +32,7 @@ with st.form("consulta"):
         linha = st.text_input("Digite a linha de ônibus")
 
     with col2:
-        st.markdown("####")  # ocupa o espaço do label
+        st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button("Buscar")
 
 # -----------------------------
