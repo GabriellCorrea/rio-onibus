@@ -1,11 +1,9 @@
 import streamlit as st
 import pandas as pd
-import folium
-import random
 import requests
+import pydeck as pdk
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from streamlit_folium import st_folium
 from streamlit_autorefresh import st_autorefresh
 
 # -----------------------------
@@ -17,16 +15,6 @@ st.set_page_config(layout="wide")
 st_autorefresh(interval=30000, key="refresh")
 
 st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
-
-# -----------------------------
-# estado do mapa (ZOOM + CENTRO)
-# -----------------------------
-if "map_center" not in st.session_state:
-    st.session_state.map_center = [-22.90, -43.20]
-
-if "map_zoom" not in st.session_state:
-    st.session_state.map_zoom = 12
-
 
 # -----------------------------
 # função para carregar dados
@@ -66,7 +54,7 @@ def carregar_dados():
 
 
 # -----------------------------
-# loader suave
+# loader
 # -----------------------------
 with st.spinner("Atualizando posições dos ônibus..."):
     df = carregar_dados()
@@ -88,7 +76,7 @@ if "linha" not in st.session_state:
 # -----------------------------
 with st.form("consulta"):
 
-    col1, col2 = st.columns([5, 1])
+    col1, col2 = st.columns([5,1])
 
     with col1:
         linha_input = st.text_input(
@@ -129,7 +117,7 @@ if linha:
         hora_inicio = df_linha["datahora"].min()
         hora_final = df_linha["datahora"].max()
 
-        k1, k2, k3 = st.columns(3)
+        k1,k2,k3 = st.columns(3)
 
         k1.metric("🚌 Ônibus ativos", qtd_onibus)
         k2.metric("⏱️ Hora inicial", hora_inicio.strftime("%H:%M:%S"))
@@ -138,62 +126,74 @@ if linha:
         st.divider()
 
         # -----------------------------
-        # mapa
+        # centro do mapa
         # -----------------------------
-        mapa = folium.Map(
-            location=st.session_state.map_center,
-            zoom_start=st.session_state.map_zoom
+        centro_lat = df_linha["latitude"].mean()
+        centro_lon = df_linha["longitude"].mean()
+
+        view_state = pdk.ViewState(
+            latitude=centro_lat,
+            longitude=centro_lon,
+            zoom=12,
+            pitch=0,
         )
 
-        onibus_ids = df_linha["ordem"].unique()
+        # -----------------------------
+        # última posição de cada ônibus
+        # -----------------------------
+        df_last = (
+            df_linha.sort_values("datahora")
+            .groupby("ordem")
+            .tail(1)
+        )
 
-        random.seed(42)
-        cores = {
-            bus: "#{:06x}".format(random.randint(0, 0xFFFFFF))
-            for bus in onibus_ids
-        }
+        # -----------------------------
+        # layer pontos ônibus
+        # -----------------------------
+        layer_onibus = pdk.Layer(
+            "ScatterplotLayer",
+            data=df_last,
+            get_position='[longitude, latitude]',
+            get_radius=60,
+            get_fill_color=[255,0,0],
+            pickable=True,
+        )
 
-        for bus in onibus_ids:
+        # -----------------------------
+        # criar rotas
+        # -----------------------------
+        rotas = []
+
+        for bus in df_linha["ordem"].unique():
 
             dados_bus = df_linha[df_linha["ordem"] == bus].sort_values("datahora")
 
-            pontos = list(zip(dados_bus["latitude"], dados_bus["longitude"]))
+            path = dados_bus[["longitude","latitude"]].values.tolist()
 
-            if len(pontos) > 1:
-                folium.PolyLine(
-                    pontos,
-                    color=cores[bus],
-                    weight=4,
-                    tooltip=f"Ônibus {bus}"
-                ).add_to(mapa)
+            rotas.append({
+                "name":bus,
+                "path":path
+            })
 
-            ultimo = dados_bus.iloc[-1]
-
-            folium.CircleMarker(
-                location=[ultimo["latitude"], ultimo["longitude"]],
-                radius=6,
-                color=cores[bus],
-                fill=True,
-                popup=f"Linha {linha} | Ônibus {bus}"
-            ).add_to(mapa)
-
-        map_data = st_folium(
-            mapa,
-            width=None,
-            height=650,
-            key="mapa_onibus"
+        # -----------------------------
+        # layer rotas
+        # -----------------------------
+        layer_rotas = pdk.Layer(
+            "PathLayer",
+            data=rotas,
+            get_path="path",
+            get_width=4,
+            get_color=[0,120,255],
+            width_min_pixels=2,
         )
 
         # -----------------------------
-        # salvar estado do mapa
+        # mapa
         # -----------------------------
-        if map_data:
+        deck = pdk.Deck(
+            layers=[layer_rotas, layer_onibus],
+            initial_view_state=view_state,
+            tooltip={"text":"Ônibus {name}"}
+        )
 
-            if map_data.get("center"):
-                st.session_state.map_center = [
-                    map_data["center"]["lat"],
-                    map_data["center"]["lng"]
-                ]
-
-            if map_data.get("zoom"):
-                st.session_state.map_zoom = map_data["zoom"]
+        st.pydeck_chart(deck, use_container_width=True)
