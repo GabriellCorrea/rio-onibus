@@ -60,7 +60,7 @@ for col in ["datahora", "datahoraenvio", "datahoraservidor"]:
 # 6️⃣ remover colunas originais
 # -----------------------------
 
-df = df.drop(columns=["datahora", "datahoraenvio", "datahoraservidor"], errors="ignore")
+df = df.drop(columns=["datahoraenvio", "datahoraservidor"], errors="ignore")
 
 # -----------------------------
 # 7️⃣ corrigir latitude e longitude
