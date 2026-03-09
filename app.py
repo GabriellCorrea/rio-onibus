@@ -9,7 +9,7 @@ from streamlit_folium import st_folium
 st.set_page_config(layout="wide")
 
 # título mais compacto
-st.markdown("## 🚌 Mapa de Ônibus — últimos 5 minutos")
+st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
 
 # -----------------------------
 # função para carregar dados
