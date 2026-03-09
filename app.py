@@ -4,6 +4,9 @@ import folium
 import random
 from datetime import timedelta
 from streamlit_folium import st_folium
+from streamlit_autorefresh import st_autorefresh
+
+st_autorefresh(interval=30000, key="refresh")
 
 # layout mais largo
 st.set_page_config(layout="wide")
@@ -14,13 +17,33 @@ st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
 # -----------------------------
 # função para carregar dados
 # -----------------------------
-@st.cache_data(ttl=60)
-def carregar_dados():
-    df = pd.read_csv("dados_onibus.csv")
-    df["datahora"] = pd.to_datetime(df["datahora"])
-    return df
+import requests
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
-df = carregar_dados()
+@st.cache_data(ttl=30)
+def carregar_dados():
+
+    data_final = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    data_inicial = data_final - timedelta(minutes=5)
+
+    data_final_str = data_final.strftime("%Y-%m-%d+%H:%M:%S")
+    data_inicial_str = data_inicial.strftime("%Y-%m-%d+%H:%M:%S")
+
+    url = f"https://dados.mobilidade.rio/gps/sppo?dataInicial={data_inicial_str}&dataFinal={data_final_str}"
+
+    r = requests.get(url)
+    dados = r.json()
+
+    df = pd.DataFrame(dados)
+
+    df["datahora"] = pd.to_datetime(df["datahora"], unit="ms", utc=True)
+    df["datahora"] = df["datahora"].dt.tz_convert("America/Sao_Paulo")
+
+    df["latitude"] = df["latitude"].str.replace(",", ".").astype(float)
+    df["longitude"] = df["longitude"].str.replace(",", ".").astype(float)
+
+    return df
 
 # -----------------------------
 # formulário de consulta
