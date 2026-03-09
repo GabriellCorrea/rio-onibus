@@ -18,8 +18,10 @@ st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
 # função para carregar dados
 # -----------------------------
 import requests
+import pandas as pd
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+import streamlit as st
 
 @st.cache_data(ttl=30)
 def carregar_dados():
@@ -32,19 +34,29 @@ def carregar_dados():
 
     url = f"https://dados.mobilidade.rio/gps/sppo?dataInicial={data_inicial_str}&dataFinal={data_final_str}"
 
-    r = requests.get(url)
-    dados = r.json()
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        return pd.DataFrame()
+
+    dados = response.json()
 
     df = pd.DataFrame(dados)
 
+    if df.empty:
+        return df
+
+    # converter timestamps
     df["datahora"] = pd.to_datetime(df["datahora"], unit="ms", utc=True)
     df["datahora"] = df["datahora"].dt.tz_convert("America/Sao_Paulo")
 
-    df["latitude"] = df["latitude"].str.replace(",", ".").astype(float)
-    df["longitude"] = df["longitude"].str.replace(",", ".").astype(float)
+    # corrigir latitude e longitude
+    df["latitude"] = df["latitude"].str.replace(",", ".", regex=False).astype(float)
+    df["longitude"] = df["longitude"].str.replace(",", ".", regex=False).astype(float)
 
     return df
 
+df = carregar_dados()
 # -----------------------------
 # formulário de consulta
 # -----------------------------
