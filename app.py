@@ -13,9 +13,6 @@ from streamlit_autorefresh import st_autorefresh
 # -----------------------------
 st.set_page_config(layout="wide")
 
-# auto refresh a cada 30s
-st_autorefresh(interval=30000, key="refresh")
-
 st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
 
 # -----------------------------
