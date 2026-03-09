@@ -23,16 +23,15 @@ def carregar_dados():
 df = carregar_dados()
 
 # -----------------------------
-# formulário de consulta
+# formulário de consulta centralizado
 # -----------------------------
 with st.form("consulta"):
-    col1, col2 = st.columns([3, 1])
+    # colunas para centralizar: 1/3 vazio | 1/3 com input e botão | 1/3 vazio
+    col_esq, col_centro, col_dir = st.columns([1, 2, 1])
 
-    with col1:
+    with col_centro:
         linha = st.text_input("Digite a linha de ônibus")
-
-    with col2:
-        submit = st.form_submit_button("Buscar")
+        submit = st.form_submit_button("Buscar", help="Clique para buscar a linha")
 
 # -----------------------------
 # consulta e exibição
