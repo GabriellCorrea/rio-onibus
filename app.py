@@ -14,7 +14,7 @@ st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
 # -----------------------------
 # função para carregar dados
 # -----------------------------
-@st.cache_data
+@st.cache_data(ttl=60)
 def carregar_dados():
     df = pd.read_csv("dados_onibus.csv")
     df["datahora"] = pd.to_datetime(df["datahora"])
