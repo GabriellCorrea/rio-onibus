@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import pandas as pd
 import folium
@@ -181,4 +180,3 @@ if linha:
             returned_objects=[],
             key="mapa_onibus"
         )
-```
