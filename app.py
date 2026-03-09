@@ -158,7 +158,8 @@ if submit and linha:
 
     st_folium(
         mapa,
-        width=1000,
-        height=600,
-        returned_objects=[]
+        width=None,
+        height=650,
+        returned_objects=[],
+        key="mapa_onibus"
     )
