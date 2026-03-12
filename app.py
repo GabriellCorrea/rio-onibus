@@ -18,38 +18,51 @@ st.set_page_config(layout="wide")
 st.markdown("""
 <style>
 
-.header-card{
-    background:#0f172a;
-    padding:30px;
-    border-radius:18px;
-    border:1px solid #1f2937;
+/* título */
+.titulo{
+    font-size:38px;
+    font-weight:700;
+    margin-bottom:5px;
+}
+
+/* subtitulo */
+.subtitulo{
+    color:#9ca3af;
     margin-bottom:25px;
 }
 
-.titulo{
-    font-size:36px;
-    font-weight:700;
+/* caixa de input */
+.stTextInput input{
+    height:55px;
+    border-radius:14px;
+    font-size:18px;
 }
 
-.subtitulo{
-    color:#94a3b8;
+/* botão */
+.stButton button{
+    height:55px;
+    border-radius:14px;
+    font-size:18px;
+    font-weight:600;
+}
+
+/* KPI */
+.kpi-container{
+    margin-top:25px;
     margin-bottom:20px;
 }
 
-.kpi-box{
-    background:#111827;
-    border-radius:14px;
-    padding:20px;
-    border:1px solid #1f2937;
+.kpi{
+    padding:10px 0;
 }
 
 .kpi-title{
-    color:#9ca3af;
-    font-size:14px;
+    color:#94a3b8;
+    font-size:16px;
 }
 
 .kpi-value{
-    font-size:32px;
+    font-size:48px;
     font-weight:700;
 }
 
@@ -115,11 +128,8 @@ if "linha" not in st.session_state:
 # -----------------------------
 # HEADER
 # -----------------------------
-st.markdown('<div class="header-card">', unsafe_allow_html=True)
-
 st.markdown('<div class="titulo">🚌 Mapa de Ônibus — Últimos 5 minutos</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitulo">Dados em tempo real — SMTR/RJ</div>', unsafe_allow_html=True)
-
 
 # -----------------------------
 # formulário
@@ -167,13 +177,13 @@ if linha:
         hora_inicio = df_linha["datahora"].min()
         hora_final = df_linha["datahora"].max()
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="kpi-container">', unsafe_allow_html=True)
 
         k1,k2,k3 = st.columns(3)
 
         with k1:
             st.markdown(f"""
-            <div class="kpi-box">
+            <div class="kpi">
                 <div class="kpi-title">🚌 Ônibus ativos</div>
                 <div class="kpi-value">{qtd_onibus}</div>
             </div>
@@ -181,21 +191,21 @@ if linha:
 
         with k2:
             st.markdown(f"""
-            <div class="kpi-box">
-                <div class="kpi-title">⏱️ Hora inicial</div>
+            <div class="kpi">
+                <div class="kpi-title">⏱ Hora inicial</div>
                 <div class="kpi-value">{hora_inicio.strftime("%H:%M:%S")}</div>
             </div>
             """, unsafe_allow_html=True)
 
         with k3:
             st.markdown(f"""
-            <div class="kpi-box">
-                <div class="kpi-title">⏱️ Hora final</div>
+            <div class="kpi">
+                <div class="kpi-title">⏱ Hora final</div>
                 <div class="kpi-value">{hora_final.strftime("%H:%M:%S")}</div>
             </div>
             """, unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # -----------------------------
