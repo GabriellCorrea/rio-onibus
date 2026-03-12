@@ -70,7 +70,7 @@ if "linha" not in st.session_state:
     st.session_state.linha = ""
     
 # -----------------------------
-# busca + filtro de linhas
+# busca + lista de linhas
 # -----------------------------
 
 linhas_disponiveis = (
@@ -81,30 +81,42 @@ linhas_disponiveis = (
     .unique()
 )
 
-col1, col2, col3 = st.columns([3,1,2])
+if "mostrar_lista" not in st.session_state:
+    st.session_state.mostrar_lista = False
 
-# campo menor
+col1, col2, col3 = st.columns([4,0.6,1])
+
+# campo de digitação
 with col1:
     linha_digitada = st.text_input(
         "Digite a linha",
-        value="",
-        placeholder="Ex: 871"
+        value=st.session_state.linha,
+        placeholder="Ex: 485",
+        label_visibility="collapsed"
     )
 
-# botão buscar
+# botão seta
 with col2:
-    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("▼"):
+        st.session_state.mostrar_lista = not st.session_state.mostrar_lista
+
+# botão buscar
+with col3:
     buscar = st.button("Buscar")
 
 # lista de linhas
-with col3:
+linha_lista = None
+
+if st.session_state.mostrar_lista:
+
     linha_lista = st.selectbox(
-        "Filtrar linhas disponíveis",
-        options=[""] + list(linhas_disponiveis),
-        index=0
+        "Linhas disponíveis",
+        options=linhas_disponiveis,
+        index=None,
+        label_visibility="collapsed"
     )
 
-# lógica de escolha
+# lógica
 linha = None
 
 if buscar and linha_digitada:
@@ -112,6 +124,9 @@ if buscar and linha_digitada:
 
 if linha_lista:
     linha = linha_lista
+
+if linha:
+    st.session_state.linha = linha
 
 # -----------------------------
 # consulta
