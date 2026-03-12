@@ -6,14 +6,56 @@ import requests
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from streamlit_folium import st_folium
-from streamlit_autorefresh import st_autorefresh
 
 # -----------------------------
 # configuração da página
 # -----------------------------
 st.set_page_config(layout="wide")
 
-st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
+# -----------------------------
+# CSS VISUAL
+# -----------------------------
+st.markdown("""
+<style>
+
+.header-card{
+    background:#0f172a;
+    padding:30px;
+    border-radius:18px;
+    border:1px solid #1f2937;
+    margin-bottom:25px;
+}
+
+.titulo{
+    font-size:36px;
+    font-weight:700;
+}
+
+.subtitulo{
+    color:#94a3b8;
+    margin-bottom:20px;
+}
+
+.kpi-box{
+    background:#111827;
+    border-radius:14px;
+    padding:20px;
+    border:1px solid #1f2937;
+}
+
+.kpi-title{
+    color:#9ca3af;
+    font-size:14px;
+}
+
+.kpi-value{
+    font-size:32px;
+    font-weight:700;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 # -----------------------------
 # função para carregar dados
@@ -71,21 +113,32 @@ if "linha" not in st.session_state:
 
 
 # -----------------------------
+# HEADER
+# -----------------------------
+st.markdown('<div class="header-card">', unsafe_allow_html=True)
+
+st.markdown('<div class="titulo">🚌 Mapa de Ônibus — Últimos 5 minutos</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitulo">Dados em tempo real — SMTR/RJ</div>', unsafe_allow_html=True)
+
+
+# -----------------------------
 # formulário
 # -----------------------------
 with st.form("consulta"):
 
-    col1, col2 = st.columns([5,1])
+    col1, col2 = st.columns([6,1])
 
     with col1:
         linha_input = st.text_input(
             "Digite a linha de ônibus",
-            value=st.session_state.linha
+            value=st.session_state.linha,
+            label_visibility="collapsed",
+            placeholder="Digite a linha (ex: 485)"
         )
 
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("Buscar")
+        submit = st.form_submit_button("🔎 Buscar")
 
 if submit:
     st.session_state.linha = linha_input
@@ -114,59 +167,84 @@ if linha:
         hora_inicio = df_linha["datahora"].min()
         hora_final = df_linha["datahora"].max()
 
+        st.markdown("<br>", unsafe_allow_html=True)
+
         k1,k2,k3 = st.columns(3)
 
-        k1.metric("🚌 Ônibus ativos", qtd_onibus)
-        k2.metric("⏱️ Hora inicial", hora_inicio.strftime("%H:%M:%S"))
-        k3.metric("⏱️ Hora final", hora_final.strftime("%H:%M:%S"))
+        with k1:
+            st.markdown(f"""
+            <div class="kpi-box">
+                <div class="kpi-title">🚌 Ônibus ativos</div>
+                <div class="kpi-value">{qtd_onibus}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        st.divider()
+        with k2:
+            st.markdown(f"""
+            <div class="kpi-box">
+                <div class="kpi-title">⏱️ Hora inicial</div>
+                <div class="kpi-value">{hora_inicio.strftime("%H:%M:%S")}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # -----------------------------
-        # centro do mapa
-        # -----------------------------
-        centro = [
-            df_linha["latitude"].mean(),
-            df_linha["longitude"].mean()
-        ]
+        with k3:
+            st.markdown(f"""
+            <div class="kpi-box">
+                <div class="kpi-title">⏱️ Hora final</div>
+                <div class="kpi-value">{hora_final.strftime("%H:%M:%S")}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        mapa = folium.Map(location=centro, zoom_start=12)
+st.markdown("</div>", unsafe_allow_html=True)
 
-        onibus_ids = df_linha["ordem"].unique()
 
-        random.seed(42)
-        cores = {
-            bus: "#{:06x}".format(random.randint(0,0xFFFFFF))
-            for bus in onibus_ids
-        }
+# -----------------------------
+# mapa
+# -----------------------------
+if linha and not df_linha.empty:
 
-        for bus in onibus_ids:
+    centro = [
+        df_linha["latitude"].mean(),
+        df_linha["longitude"].mean()
+    ]
 
-            dados_bus = df_linha[df_linha["ordem"] == bus].sort_values("datahora")
+    mapa = folium.Map(location=centro, zoom_start=12)
 
-            pontos = list(zip(dados_bus["latitude"],dados_bus["longitude"]))
+    onibus_ids = df_linha["ordem"].unique()
 
-            if len(pontos) > 1:
-                folium.PolyLine(
-                    pontos,
-                    color=cores[bus],
-                    weight=4,
-                    tooltip=f"Ônibus {bus}"
-                ).add_to(mapa)
+    random.seed(42)
+    cores = {
+        bus: "#{:06x}".format(random.randint(0,0xFFFFFF))
+        for bus in onibus_ids
+    }
 
-            ultimo = dados_bus.iloc[-1]
+    for bus in onibus_ids:
 
-            folium.CircleMarker(
-                location=[ultimo["latitude"], ultimo["longitude"]],
-                radius=6,
+        dados_bus = df_linha[df_linha["ordem"] == bus].sort_values("datahora")
+
+        pontos = list(zip(dados_bus["latitude"],dados_bus["longitude"]))
+
+        if len(pontos) > 1:
+            folium.PolyLine(
+                pontos,
                 color=cores[bus],
-                fill=True,
-                popup=f"Linha {linha} | Ônibus {bus}"
+                weight=4,
+                tooltip=f"Ônibus {bus}"
             ).add_to(mapa)
 
-        st_folium(
-            mapa,
-            width=None,
-            height=650,
-            key="mapa_onibus"
-        )
+        ultimo = dados_bus.iloc[-1]
+
+        folium.CircleMarker(
+            location=[ultimo["latitude"], ultimo["longitude"]],
+            radius=6,
+            color=cores[bus],
+            fill=True,
+            popup=f"Linha {linha} | Ônibus {bus}"
+        ).add_to(mapa)
+
+    st_folium(
+        mapa,
+        width=None,
+        height=650,
+        key="mapa_onibus"
+    )
