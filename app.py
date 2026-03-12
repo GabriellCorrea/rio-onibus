@@ -68,29 +68,25 @@ if df.empty:
 # -----------------------------
 if "linha" not in st.session_state:
     st.session_state.linha = ""
-
-
+    
 # -----------------------------
-# formulário
+# filtro de linhas disponíveis
 # -----------------------------
-with st.form("consulta"):
 
-    col1, col2 = st.columns([5,1])
+linhas_disponiveis = (
+    df["linha"]
+    .dropna()
+    .astype(str)
+    .sort_values()
+    .unique()
+)
 
-    with col1:
-        linha_input = st.text_input(
-            "Digite a linha de ônibus",
-            value=st.session_state.linha
-        )
-
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("Buscar")
-
-if submit:
-    st.session_state.linha = linha_input
-
-linha = st.session_state.linha
+linha = st.selectbox(
+    "🔎 Escolha a linha de ônibus",
+    options=linhas_disponiveis,
+    index=None,
+    placeholder="Clique para ver todas as linhas disponíveis"
+)
 
 
 # -----------------------------
