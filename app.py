@@ -6,19 +6,38 @@ import requests
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from streamlit_folium import st_folium
-from streamlit_autorefresh import st_autorefresh
 
 # -----------------------------
 # configuração da página
 # -----------------------------
 st.set_page_config(layout="wide")
 
-st.markdown("## 🚌 Mapa de Ônibus — Últimos 5 minutos")
+# CSS para estilo escuro do painel
+st.markdown("""
+<style>
+
+[data-testid="stAppViewContainer"] {
+    background-color: #0f172a;
+}
+
+.sidebar-card {
+    background-color: #111827;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+h1,h2,h3,h4,p,label {
+    color: white;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 # -----------------------------
-# função para carregar dados
+# função carregar dados
 # -----------------------------
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=30)
 def carregar_dados():
 
     data_final = datetime.now(ZoneInfo("America/Sao_Paulo"))
@@ -29,112 +48,104 @@ def carregar_dados():
 
     url = f"https://dados.mobilidade.rio/gps/sppo?dataInicial={data_inicial_str}&dataFinal={data_final_str}"
 
-    response = requests.get(url)
+    r = requests.get(url)
 
-    if response.status_code != 200:
+    if r.status_code != 200:
         return pd.DataFrame()
 
-    dados = response.json()
+    dados = r.json()
 
     df = pd.DataFrame(dados)
 
     if df.empty:
         return df
 
-    # converter timestamps
     df["datahora"] = pd.to_datetime(df["datahora"], unit="ms", utc=True)
     df["datahora"] = df["datahora"].dt.tz_convert("America/Sao_Paulo")
 
-    # corrigir latitude e longitude
     df["latitude"] = df["latitude"].str.replace(",", ".", regex=False).astype(float)
     df["longitude"] = df["longitude"].str.replace(",", ".", regex=False).astype(float)
 
     return df
 
 
-# -----------------------------
-# carregar dados
-# -----------------------------
-with st.spinner("Atualizando posições dos ônibus..."):
-    df = carregar_dados()
+df = carregar_dados()
 
 if df.empty:
-    st.warning("Não foi possível carregar dados da API.")
+    st.warning("Não foi possível carregar dados.")
     st.stop()
 
 
 # -----------------------------
-# guardar linha pesquisada
+# layout principal
 # -----------------------------
-if "linha" not in st.session_state:
-    st.session_state.linha = ""
-
-
-# -----------------------------
-# formulário
-# -----------------------------
-with st.form("consulta"):
-
-    col1, col2 = st.columns([5,1])
-
-    with col1:
-        linha_input = st.text_input(
-            "Digite a linha de ônibus",
-            value=st.session_state.linha
-        )
-
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        submit = st.form_submit_button("Buscar")
-
-if submit:
-    st.session_state.linha = linha_input
-
-linha = st.session_state.linha
+col_painel, col_mapa = st.columns([1,3])
 
 
 # -----------------------------
-# consulta
+# painel lateral
 # -----------------------------
-if linha:
+with col_painel:
 
-    tempo_max = df["datahora"].max()
-    limite = tempo_max - timedelta(minutes=5)
+    st.markdown("### 🚌 Rio Bus Tracker")
+    st.caption("Tempo real · SMTR/RJ")
 
-    df_5min = df[df["datahora"] >= limite]
-    df_linha = df_5min[df_5min["linha"].astype(str) == linha]
+    linha = st.text_input("Linha do ônibus")
 
-    if len(df_linha) == 0:
-        st.warning("Nenhum ônibus encontrado nos últimos 5 minutos")
+    buscar = st.button("🔎 Buscar no mapa")
 
-    else:
+    st.markdown("### Linhas rápidas")
 
-        # KPIs
-        qtd_onibus = df_linha["ordem"].nunique()
-        hora_inicio = df_linha["datahora"].min()
-        hora_final = df_linha["datahora"].max()
+    colA,colB,colC = st.columns(3)
 
-        k1,k2,k3 = st.columns(3)
+    if colA.button("473"): linha="473"
+    if colB.button("232"): linha="232"
+    if colC.button("485"): linha="485"
 
-        k1.metric("🚌 Ônibus ativos", qtd_onibus)
-        k2.metric("⏱️ Hora inicial", hora_inicio.strftime("%H:%M:%S"))
-        k3.metric("⏱️ Hora final", hora_final.strftime("%H:%M:%S"))
+    st.divider()
 
-        st.divider()
+    if linha:
 
-        # -----------------------------
-        # centro do mapa
-        # -----------------------------
+        tempo_max = df["datahora"].max()
+        limite = tempo_max - timedelta(minutes=5)
+
+        df_5min = df[df["datahora"] >= limite]
+        df_linha = df_5min[df_5min["linha"].astype(str) == linha]
+
+        if len(df_linha) == 0:
+            st.warning("Nenhum ônibus encontrado")
+
+        else:
+
+            qtd_onibus = df_linha["ordem"].nunique()
+
+            st.metric("Ônibus", qtd_onibus)
+
+
+# -----------------------------
+# mapa
+# -----------------------------
+with col_mapa:
+
+    if linha and len(df_linha)>0:
+
         centro = [
             df_linha["latitude"].mean(),
             df_linha["longitude"].mean()
         ]
 
-        mapa = folium.Map(location=centro, zoom_start=12)
+    else:
+
+        centro = [-22.90,-43.20]
+
+    mapa = folium.Map(location=centro, zoom_start=11)
+
+    if linha and len(df_linha)>0:
 
         onibus_ids = df_linha["ordem"].unique()
 
         random.seed(42)
+
         cores = {
             bus: "#{:06x}".format(random.randint(0,0xFFFFFF))
             for bus in onibus_ids
@@ -147,11 +158,11 @@ if linha:
             pontos = list(zip(dados_bus["latitude"],dados_bus["longitude"]))
 
             if len(pontos) > 1:
+
                 folium.PolyLine(
                     pontos,
                     color=cores[bus],
                     weight=4,
-                    tooltip=f"Ônibus {bus}"
                 ).add_to(mapa)
 
             ultimo = dados_bus.iloc[-1]
@@ -161,12 +172,10 @@ if linha:
                 radius=6,
                 color=cores[bus],
                 fill=True,
-                popup=f"Linha {linha} | Ônibus {bus}"
             ).add_to(mapa)
 
-        st_folium(
-            mapa,
-            width=None,
-            height=650,
-            key="mapa_onibus"
-        )
+    st_folium(
+        mapa,
+        width=None,
+        height=800
+    )
