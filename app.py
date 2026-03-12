@@ -68,65 +68,30 @@ if df.empty:
 # -----------------------------
 if "linha" not in st.session_state:
     st.session_state.linha = ""
-    
+
+
 # -----------------------------
-# busca + lista de linhas
+# formulário
 # -----------------------------
+with st.form("consulta"):
 
-linhas_disponiveis = (
-    df["linha"]
-    .dropna()
-    .astype(str)
-    .sort_values()
-    .unique()
-)
+    col1, col2 = st.columns([5,1])
 
-if "mostrar_lista" not in st.session_state:
-    st.session_state.mostrar_lista = False
+    with col1:
+        linha_input = st.text_input(
+            "Digite a linha de ônibus",
+            value=st.session_state.linha
+        )
 
-col1, col2, col3 = st.columns([4,0.6,1])
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        submit = st.form_submit_button("Buscar")
 
-# campo de digitação
-with col1:
-    linha_digitada = st.text_input(
-        "Digite a linha",
-        value=st.session_state.linha,
-        placeholder="Ex: 485",
-        label_visibility="collapsed"
-    )
+if submit:
+    st.session_state.linha = linha_input
 
-# botão seta
-with col2:
-    if st.button("▼"):
-        st.session_state.mostrar_lista = not st.session_state.mostrar_lista
+linha = st.session_state.linha
 
-# botão buscar
-with col3:
-    buscar = st.button("Buscar")
-
-# lista de linhas
-linha_lista = None
-
-if st.session_state.mostrar_lista:
-
-    linha_lista = st.selectbox(
-        "Linhas disponíveis",
-        options=linhas_disponiveis,
-        index=None,
-        label_visibility="collapsed"
-    )
-
-# lógica
-linha = None
-
-if buscar and linha_digitada:
-    linha = linha_digitada
-
-if linha_lista:
-    linha = linha_lista
-
-if linha:
-    st.session_state.linha = linha
 
 # -----------------------------
 # consulta
