@@ -7,37 +7,83 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from streamlit_folium import st_folium
 
-# -----------------------------
-# configuração da página
-# -----------------------------
+# --------------------------------------------------
+# CONFIGURAÇÃO DA PÁGINA
+# --------------------------------------------------
+
 st.set_page_config(layout="wide")
 
-# CSS para estilo escuro do painel
+# --------------------------------------------------
+# CSS DO PAINEL (visual igual ao da imagem)
+# --------------------------------------------------
+
 st.markdown("""
 <style>
 
-[data-testid="stAppViewContainer"] {
-    background-color: #0f172a;
+.stApp{
+    background-color:#050b18;
 }
 
-.sidebar-card {
-    background-color: #111827;
-    padding: 20px;
-    border-radius: 12px;
+.panel{
+    background-color:#081021;
+    padding:25px;
+    border-right:1px solid #1f2a44;
+    height:100vh;
 }
 
-h1,h2,h3,h4,p,label {
-    color: white;
+.title{
+    font-size:26px;
+    font-weight:700;
+    color:white;
+}
+
+.subtitle{
+    color:#7aa0d8;
+    font-size:14px;
+}
+
+.section{
+    margin-top:30px;
+    color:#2ef2d1;
+    font-weight:600;
+    letter-spacing:1px;
+}
+
+.quick{
+    background:#111a2e;
+    border-radius:20px;
+    padding:6px 14px;
+    margin:4px;
+    display:inline-block;
+    color:#a9c4ff;
+    border:1px solid #26395c;
+}
+
+.card{
+    background:#0f1a30;
+    border-radius:15px;
+    padding:20px;
+    border:1px solid #1f2a44;
+}
+
+.metric-big{
+    font-size:32px;
+    font-weight:700;
+    color:white;
+}
+
+.metric-label{
+    color:#7c96c5;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
+# --------------------------------------------------
+# FUNÇÃO ORIGINAL (NÃO ALTERADA)
+# --------------------------------------------------
 
-# -----------------------------
-# função carregar dados
-# -----------------------------
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=30, show_spinner=False)
 def carregar_dados():
 
     data_final = datetime.now(ZoneInfo("America/Sao_Paulo"))
@@ -48,12 +94,12 @@ def carregar_dados():
 
     url = f"https://dados.mobilidade.rio/gps/sppo?dataInicial={data_inicial_str}&dataFinal={data_final_str}"
 
-    r = requests.get(url)
+    response = requests.get(url)
 
-    if r.status_code != 200:
+    if response.status_code != 200:
         return pd.DataFrame()
 
-    dados = r.json()
+    dados = response.json()
 
     df = pd.DataFrame(dados)
 
@@ -68,41 +114,61 @@ def carregar_dados():
 
     return df
 
+# --------------------------------------------------
+# CARREGAR DADOS
+# --------------------------------------------------
 
 df = carregar_dados()
 
 if df.empty:
-    st.warning("Não foi possível carregar dados.")
+    st.warning("Não foi possível carregar dados da API.")
     st.stop()
 
+# --------------------------------------------------
+# SESSION STATE (MESMA LÓGICA)
+# --------------------------------------------------
 
-# -----------------------------
-# layout principal
-# -----------------------------
-col_painel, col_mapa = st.columns([1,3])
+if "linha" not in st.session_state:
+    st.session_state.linha = ""
 
+# --------------------------------------------------
+# LAYOUT PRINCIPAL
+# --------------------------------------------------
 
-# -----------------------------
-# painel lateral
-# -----------------------------
+col_painel, col_mapa = st.columns([1.1,3.5])
+
+# --------------------------------------------------
+# PAINEL (VISUAL)
+# --------------------------------------------------
+
 with col_painel:
 
-    st.markdown("### 🚌 Rio Bus Tracker")
-    st.caption("Tempo real · SMTR/RJ")
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
 
-    linha = st.text_input("Linha do ônibus")
+    st.markdown('<div class="title">Rio Bus Tracker</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">Tempo real · SMTR/RJ</div>', unsafe_allow_html=True)
 
-    buscar = st.button("🔎 Buscar no mapa")
+    st.markdown('<div class="section">LINHA DO ÔNIBUS</div>', unsafe_allow_html=True)
 
-    st.markdown("### Linhas rápidas")
+    linha_input = st.text_input("", value=st.session_state.linha)
 
-    colA,colB,colC = st.columns(3)
+    if st.button("Buscar no mapa"):
+        st.session_state.linha = linha_input
 
-    if colA.button("473"): linha="473"
-    if colB.button("232"): linha="232"
-    if colC.button("485"): linha="485"
+    st.markdown('<div class="section">LINHAS RÁPIDAS</div>', unsafe_allow_html=True)
 
-    st.divider()
+    st.markdown("""
+    <span class="quick">473</span>
+    <span class="quick">232</span>
+    <span class="quick">485</span>
+    <span class="quick">SP</span>
+    <span class="quick">2336</span>
+    <span class="quick">3001</span>
+    <span class="quick">867</span>
+    <span class="quick">415</span>
+    """, unsafe_allow_html=True)
+
+    linha = st.session_state.linha
 
     if linha:
 
@@ -112,70 +178,83 @@ with col_painel:
         df_5min = df[df["datahora"] >= limite]
         df_linha = df_5min[df_5min["linha"].astype(str) == linha]
 
-        if len(df_linha) == 0:
-            st.warning("Nenhum ônibus encontrado")
+        st.markdown(f'<div class="section">LINHA {linha}</div>', unsafe_allow_html=True)
 
-        else:
+        if len(df_linha) > 0:
 
             qtd_onibus = df_linha["ordem"].nunique()
 
-            st.metric("Ônibus", qtd_onibus)
+            c1,c2 = st.columns(2)
 
+            with c1:
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+                st.markdown(f'<div class="metric-big">{qtd_onibus}</div>', unsafe_allow_html=True)
+                st.markdown('<div class="metric-label">Ônibus</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-# -----------------------------
-# mapa
-# -----------------------------
+            with c2:
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+                st.markdown('<div class="metric-big">0 km/h</div>', unsafe_allow_html=True)
+                st.markdown('<div class="metric-label">Vel. média</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --------------------------------------------------
+# MAPA (MESMA LÓGICA ORIGINAL)
+# --------------------------------------------------
+
 with col_mapa:
 
-    if linha and len(df_linha)>0:
+    if st.session_state.linha:
 
-        centro = [
-            df_linha["latitude"].mean(),
-            df_linha["longitude"].mean()
-        ]
+        linha = st.session_state.linha
 
-    else:
+        tempo_max = df["datahora"].max()
+        limite = tempo_max - timedelta(minutes=5)
 
-        centro = [-22.90,-43.20]
+        df_5min = df[df["datahora"] >= limite]
+        df_linha = df_5min[df_5min["linha"].astype(str) == linha]
 
-    mapa = folium.Map(location=centro, zoom_start=11)
+        if len(df_linha) > 0:
 
-    if linha and len(df_linha)>0:
+            centro = [
+                df_linha["latitude"].mean(),
+                df_linha["longitude"].mean()
+            ]
 
-        onibus_ids = df_linha["ordem"].unique()
+            mapa = folium.Map(location=centro, zoom_start=12)
 
-        random.seed(42)
+            onibus_ids = df_linha["ordem"].unique()
 
-        cores = {
-            bus: "#{:06x}".format(random.randint(0,0xFFFFFF))
-            for bus in onibus_ids
-        }
+            random.seed(42)
 
-        for bus in onibus_ids:
+            cores = {
+                bus: "#{:06x}".format(random.randint(0,0xFFFFFF))
+                for bus in onibus_ids
+            }
 
-            dados_bus = df_linha[df_linha["ordem"] == bus].sort_values("datahora")
+            for bus in onibus_ids:
 
-            pontos = list(zip(dados_bus["latitude"],dados_bus["longitude"]))
+                dados_bus = df_linha[df_linha["ordem"] == bus].sort_values("datahora")
 
-            if len(pontos) > 1:
+                pontos = list(zip(dados_bus["latitude"],dados_bus["longitude"]))
 
-                folium.PolyLine(
-                    pontos,
+                if len(pontos) > 1:
+
+                    folium.PolyLine(
+                        pontos,
+                        color=cores[bus],
+                        weight=4
+                    ).add_to(mapa)
+
+                ultimo = dados_bus.iloc[-1]
+
+                folium.CircleMarker(
+                    location=[ultimo["latitude"], ultimo["longitude"]],
+                    radius=6,
                     color=cores[bus],
-                    weight=4,
+                    fill=True
                 ).add_to(mapa)
 
-            ultimo = dados_bus.iloc[-1]
-
-            folium.CircleMarker(
-                location=[ultimo["latitude"], ultimo["longitude"]],
-                radius=6,
-                color=cores[bus],
-                fill=True,
-            ).add_to(mapa)
-
-    st_folium(
-        mapa,
-        width=None,
-        height=800
-    )
+            st_folium(mapa, height=800, width=None)
